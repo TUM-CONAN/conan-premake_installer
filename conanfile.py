@@ -2,7 +2,7 @@ import os
 from conans import tools, ConanFile
 from conans import __version__ as conan_version
 from conans.model.version import Version
-from conans.tools import download, unzip
+from conans.tools import download, unzip, untargz
 
 available_versions = ["5.0.0-alpha12",]
 
@@ -10,11 +10,7 @@ class Premake(ConanFile):
     name = "premake_installer"
     license = "https://github.com/premake/premake-core/raw/master/LICENSE.txt"
     url = "https://github.com/ulricheck/conan-premake_installer"
-    if conan_version < Version("1.0.0"):
-        settings = {"os": ["Windows", "Linux", "Macos"],
-                    "arch": ["x86", "x86_64"]}
-    else:
-        settings = "os_build", "arch_build"
+    settings = "os_build", "arch_build"
     options = {"version": available_versions}
     default_options = "version=" + available_versions[0]
     build_policy = "missing"
@@ -35,27 +31,23 @@ class Premake(ConanFile):
             return self.version
 
     def build(self):
+        self.output.warn("Fetching binaries for platform: %s" % self.settings.os_build)
         archive = "premake.zip"
-        download("https://github.com/premake/premake-core/releases/download/v%s/premake-%s-src.zip" % (self.premake_version, self.premake_version), archive)
-        unzip(archive)
+        osname = {
+            "Windows":"windows",
+            "Linux": "linux",
+            "Macos": "macosx",
+        }[str(self.settings.os_build)]
+        suffix = ".zip" if self.settings.os_build == "Windows" else ".tar.gz"
+        download("https://github.com/premake/premake-core/releases/download/v%s/premake-%s-%s%s" % (self.premake_version, self.premake_version, osname, suffix), archive)
+        if suffix == ".zip":
+            unzip(archive)
+        else:
+            untargz(archive)
         os.unlink(archive)
 
-        if self.settings.os_build == "Windows":
-            os.chdir("premake-%s/build/gmake.windows" % self.premake_version)
-            self.run("nmake")
-            os.chdir("../..")
-
-        elif self.settings.os_build == "Macos":
-            os.chdir("premake-%s/build/gmake.macosx" % self.premake_version)
-            self.run("make")
-
-        elif self.settings.os_build == "Linux":
-           os.chdir("premake-%s/build/gmake.unix" % self.premake_version)
-           self.run("make")
-           os.chdir("../..")
-
     def package(self):
-        self.copy("premake*", dst="bin", src="premake-%s/bin/release" % self.premake_version)
+        self.copy("premake*", dst="bin")
 
     def package_info(self):
         if self.package_folder is not None:
