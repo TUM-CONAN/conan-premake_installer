@@ -55,7 +55,7 @@ class Premake(ConanFile):
            os.chdir("../..")
 
     def package(self):
-        self.copy("*", dst="bin", src="premake-%s/bin/release" % self.premake_version)
+        self.copy("premake*", dst="bin", src="premake-%s/bin/release" % self.premake_version)
 
     def package_info(self):
         if self.package_folder is not None:
